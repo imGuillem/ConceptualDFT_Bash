@@ -1,0 +1,92 @@
+#!/bin/bash
+
+#------------
+# Get options
+#------------
+
+set -- ` getopt h $*`
+
+# ---------------
+# process options
+# ---------------
+
+while [ $1 != -- ]
+do
+  case $1 in
+ -h)
+     echo "
+     This script reads in a g98.log file and extracts  coords
+#          
+#
+#     INPUT FILES :    my_file   g98 output file
+#
+#     OUTPUT FILES :    my_file.xyz   Final cartesians coordinates
+#       
+#            gau2xyz my_file             
+#   "
+   exit 0
+   ;;
+esac
+done
+shift;
+
+#------------------------------------------
+# Check that an adf output file is supplied
+#------------------------------------------
+
+if [ $# == 0 ] ; then
+   echo
+   echo "  --- No gaussian output file given "
+   echo "  --- Correct usage is :         gau2xyz my_file "
+   echo
+   exit 2
+fi
+
+#----------------------------
+# Check that the output file exists
+#----------------------------
+	#-- Guillem modification. Start
+if [[ $1 == *.out ]]; then
+	filename=$(basename $1 ".out")
+	cp $1 ${filename}.log
+	NAME=${filename.log}
+else
+	NAME=$1
+fi
+	#-- Guillem modification. End
+
+if [[ $1 == *.log ]]; then
+  NAME=${1%.log}
+ else
+  NAME=$1
+fi
+
+if [ ! -f ${NAME}.log ] ; then
+   echo
+   echo --- Output file ${NAME}.log/out does not exist ---
+   echo
+   exit 2
+fi
+
+#-----------------------------------------------------------------
+# Every check passed, start grepping final energy from output file
+#-----------------------------------------------------------------
+
+ENE=`grep "SCF Done" ${NAME}.log | /usr/bin/tail -1 | awk '{print($1,$2,$5,$6)}'` 
+
+echo ${NAME} $ENE | awk '{print($1,$2,$3,$4,$5)}' > tmp_ene
+
+
+#-------------------------------------------------------------------
+# start grepping final coordiantes from output file
+#-------------------------------------------------------------------
+
+awk -f /users/gpey/bin/gauss_2_xyz.awk ${NAME}.log > tmp_xyz      
+
+NAT=`wc -l tmp_xyz|awk '{print($1)}'`
+echo $NAT            >  ${NAME}.xyz
+cat tmp_ene         >>  ${NAME}.xyz
+cat tmp_xyz         >>  ${NAME}.xyz
+
+rm tmp_xyz
+rm tmp_ene
